@@ -118,6 +118,14 @@ class StdoutYoutubeDL(yt_dlp.YoutubeDL):
     def to_stderr(self, message):
         sys.stdout.write(message + '\n')
 
+def has_imagine_dragons(str):
+    input = str.lower()
+
+    if 'imagine dragons' in input:
+        return True
+    else:
+        return False
+
 async def search_ytdlp_async(query, ydl_opts):
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, lambda: _extract(query, ydl_opts))
@@ -171,8 +179,12 @@ def get_description_and_name(video: YouTube):
         elif letter == '"':
             break
     text = loads(desc)
+    try:
+        name = text.splitlines()[2]
+    except:
+        name = ''
 
-    return [text.splitlines()[-1], text.splitlines()[2]] #3rd row is "author · song"
+    return [text.splitlines()[-1], name] #3rd row is "author · song"
 
 current_song = None
 
@@ -321,6 +333,10 @@ def run_bot():
                                 song_query += words
                                 song_query += ' '
                             i += 1
+                        if has_imagine_dragons(song_query):
+                            if random.uniform(0, 1) > 0.05:
+                                await msg.reply("BLASPHEMY", mention_author=False)
+                                return
                         queries.append(song_query)
                     
                     for query in queries:
@@ -332,6 +348,10 @@ def run_bot():
                                 query = query[:i]
                             query = check_url(query)
                             print("Query posle: " + query)
+                            if has_imagine_dragons(msg.content):
+                                if random.uniform(0, 1) > 0.05:
+                                    await msg.reply("BLASPHEMY", mention_author=False)
+                                    pass
                         search_term = ytsearch1 + query
                         results = await search_ytdlp_async(search_term, ydl_options)
                         tracks = results.get("entries", [])
