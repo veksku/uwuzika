@@ -131,27 +131,40 @@ async def search_ytdlp_async(query, ydl_opts):
     return await loop.run_in_executor(None, lambda: _extract(query, ydl_opts))
 
 def _extract(query, ydl_opts):
-    # with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-    with StdoutYoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    # with StdoutYoutubeDL(ydl_opts) as ydl:
         return ydl.extract_info(query, download=False)
     
 def get_urls_from_playlist(playlist):
     urls = []
     playlist_urls = Playlist(playlist)
+    print(playlist_urls)
 
     for url in playlist_urls:
+        print(url)
         urls.append(url)
 
     return urls
 
-# im a hackerman, and youtube links are stupid
-def hack_url_from_playlist(playlist):
+# https://www.youtube.com/playlist?list=PLXFWqVMrqteR36cGfqqZqy8kyk0elyAGj
+# into
+# https://www.youtube.com/watch?v=a&list=PLXFWqVMrqteR36cGfqqZqy8kyk0elyAGj
+
+def fix_playlist_url(url):
+
+    list_txt = '&list='
     playlist_txt = 'playlist?list='
-    offset = len(playlist_txt)
-    i = playlist.find(playlist_txt)
-    link = playlist[i+offset:]
-                            #ts works lol \/
-    retval = playlist[:i] + "watch?v=a&list=" + link
+    watch_txt = 'watch?v='
+
+    offset = len(list_txt)
+    i = url.find(list_txt)
+    code_len = 34 # in case it has index, bruh
+    link = url[i+offset:i+offset+code_len] # only playlist's code
+
+    j = url.find(watch_txt) # get the base yt link, remove video's code
+
+    retval = url[:j] + playlist_txt + link # playable playlist link
+
     print(retval)
 
     return retval
@@ -205,14 +218,31 @@ def run_bot():
         bot = commands.Bot(command_prefix="!", intents=intents)
         prefix = '!'
 
+        # ydl_options = {
+        #     "format": "bestaudio[abr<=96]/bestaudio",
+        #     "youtube_include_dash_manifest": False,
+        #     "youtube_include_hls_manifest": False,
+        #     "logger": StdoutLogger(),
+        #     "progress_with_newline": True,
+        #     "verbose": True,
+        # }
+
+        ydl_options_get_links = {
+            # "quiet": True,
+            'skip_download': True,
+            'extract_flat': True,
+        }
+
         ydl_options = {
-            "format": "bestaudio[abr<=96]/bestaudio",
-            "noplaylist": True,
+            # "format": "bestaudio[abr<=96]/bestaudio",
+            
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
             "youtube_include_dash_manifest": False,
             "youtube_include_hls_manifest": False,
             "logger": StdoutLogger(),
             "progress_with_newline": True,
             "verbose": True,
+            "noplaylist": True,
         }
 
         ffmpeg_options = {
@@ -312,14 +342,22 @@ def run_bot():
                     if validators.url(text) == True:
                         is_url = True
                         if "playlist?list=" in text:
-                            fixed_playlist_url = hack_url_from_playlist(text)
-                            urls = get_urls_from_playlist(fixed_playlist_url)
-                            for url in urls:
-                                queries.append(url)
+                            # no check if playlist empty
+                            info = _extract(text, ydl_options_get_links)
+                            videos = info.get('entries', [])
+                            for video in videos:
+                                queries.append(video.get('url'))
+                            # first_vid_url = first_track.get('url')
+                            # fixed_url = fix_playlist_url(text, first_vid_url)
+                            # urls = get_urls_from_playlist(fixed_url)
+                            # for url in urls:
+                            #     queries.append(url)
                         elif "&list=" in text:
-                            urls = get_urls_from_playlist(text)
-                            for url in urls:
-                                queries.append(url)
+                            fixed_url = fix_playlist_url(text)
+                            info = _extract(fixed_url, ydl_options_get_links)
+                            videos = info.get('entries', [])
+                            for video in videos:
+                                queries.append(video.get('url'))
                         else:
                             queries.append(text)
                     #if its words
@@ -377,6 +415,7 @@ def run_bot():
                 except Exception as e:
                     print("exception trigerovan: " + str(e))
                     if not (str(e) == "Not connected to voice."):
+                        print(str(e))
                         await msg.reply("Nesto oslo u kurac, vrv veljko kriv.", mention_author=False)
                     return
 
