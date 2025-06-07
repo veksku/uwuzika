@@ -241,8 +241,7 @@ def run_bot():
         ydl_options_get_links_from_playlist = {
             "quiet": True,
             'skip_download': True,
-            'extract_flat': True,
-            'playlist-start': 100
+            'extract_flat': True
         }
 
         ydl_options = {
@@ -255,19 +254,6 @@ def run_bot():
             "verbose": True,
             "noplaylist": True,
         }
-
-        
-        # ydl_options_link = {
-        #     # "format": "bestaudio[abr<=96]/bestaudio",
-        #     "format": "bestaudio[ext=m4a]/bestaudio/best",
-        #     "youtube_include_dash_manifest": False,
-        #     "youtube_include_hls_manifest": False,
-        #     "logger": StdoutLogger(),
-        #     "progress_with_newline": True,
-        #     "verbose": True,
-        #     "noplaylist": True,
-        #     # "extract_flat": True,
-        # }
 
         ffmpeg_options = {
             "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
