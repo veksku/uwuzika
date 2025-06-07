@@ -13,7 +13,6 @@ import time
 shutdown = False
 TOKEN = None
 
-
 class PaginationView(discord.ui.View):
     current_page = 1
     songs_per_page = 10
@@ -108,13 +107,22 @@ class StdoutLogger:
     def warning(self, msg):
         sys.stdout.write(f"[warn] {msg}\n")
     def error(self, msg):
-        sys.stdout.write(f"[error] {msg}\n")
+        if "The uploader has not made this video available in your country" in str(msg):
+            sys.stdout.write(f"[error] region_locked\n")
+        elif "copyright claim" in str(msg):
+            sys.stdout.write(f"[error] copyright\n")
+        elif "This video may be inappropriate for some users." in str(msg):
+            sys.stdout.write(f"[error] age_restricted\n")
+        elif "Video unavailable. This video is not available" in str(msg):
+            sys.stdout.write(f"[error] video_unavailable\n")
+        else:
+            sys.stdout.write(f"[error] {msg}\n")
 
-class StdoutYoutubeDL(yt_dlp.YoutubeDL):
-    def to_stdout(self, message, skip_eol=False):
-        sys.stdout.write(message + ('' if skip_eol else '\n'))
-    def to_stderr(self, message):
-        sys.stdout.write(message + '\n')
+# class StdoutYoutubeDL(yt_dlp.YoutubeDL):
+#     def to_stdout(self, message, skip_eol=False):
+#         sys.stdout.write(message + ('' if skip_eol else '\n'))
+#     def to_stderr(self, message):
+#         sys.stdout.write(message + '\n')
 
 def has_imagine_dragons(str):
     input = str.lower()
@@ -153,8 +161,9 @@ def _extract(query, ydl_opts):
                 print(f"Format extraction failed, attempt {attempt+1}, trying again...")
                 time.sleep(3)
             else:
+                print(e)
                 raise
-    print(f"Failed to process {query} after {attempts} attempts, either update yt-dlp or cry")
+    print(f"Failed to process {query} after {attempts+1} attempts, either update yt-dlp or cry")
     return
 
 
@@ -233,6 +242,7 @@ def run_bot():
             "quiet": True,
             'skip_download': True,
             'extract_flat': True,
+            'playlist-start': 100
         }
 
         ydl_options = {
@@ -247,17 +257,17 @@ def run_bot():
         }
 
         
-        ydl_options_link = {
-            # "format": "bestaudio[abr<=96]/bestaudio",
-            "format": "bestaudio[ext=m4a]/bestaudio/best",
-            "youtube_include_dash_manifest": False,
-            "youtube_include_hls_manifest": False,
-            "logger": StdoutLogger(),
-            "progress_with_newline": True,
-            "verbose": True,
-            "noplaylist": True,
-            # "extract_flat": True,
-        }
+        # ydl_options_link = {
+        #     # "format": "bestaudio[abr<=96]/bestaudio",
+        #     "format": "bestaudio[ext=m4a]/bestaudio/best",
+        #     "youtube_include_dash_manifest": False,
+        #     "youtube_include_hls_manifest": False,
+        #     "logger": StdoutLogger(),
+        #     "progress_with_newline": True,
+        #     "verbose": True,
+        #     "noplaylist": True,
+        #     # "extract_flat": True,
+        # }
 
         ffmpeg_options = {
             "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
@@ -291,8 +301,6 @@ def run_bot():
             # print(msg.guild.id) # id servera
             # print(msg.channel) # ime sobe na serveru
             # print(msg.channel.id) # id te sobe
-            id_of_user_msg = msg.id
-            channel_id = msg.channel.id
             GUILD_ID = msg.guild.id
 
             # de je onaj sto pise poruku
@@ -408,21 +416,21 @@ def run_bot():
                                 i = query.find("&pp=") # bilo samo "&"
                                 query = query[:i]
                             search_term = query
-                            results = await search_ytdlp_async(search_term, ydl_options_link)
+                            results = await search_ytdlp_async(search_term, ydl_options)
 
                             if results == None:
                                 continue
                             if results == 'region_locked':
-                                await msg.reply("Hejtuju Srbiju pa nmz se pusti", mention_author=False)
+                                await msg.reply(f"Hejtuju Srbiju pa <{query}> nmz se pusti", mention_author=False)
                                 continue
                             if results == 'copyright':
-                                await msg.reply("Kopirajtovali ga lmao", mention_author=False)
+                                await msg.reply(f"Kopirajtovali <{query}> lmao", mention_author=False)
                                 continue
                             if results == 'age_restricted':
-                                await msg.reply("Sussy/NSFW video, age restricted", mention_author=False)
+                                await msg.reply(f"Pa <{query}> je sussy, age restricted video baka", mention_author=False)
                                 continue
                             if results == 'video_unavailable':
-                                await msg.reply("Video nedostupan brt", mention_author=False)
+                                await msg.reply(f"Video <{query}> je nedostupan brt", mention_author=False)
                                 continue
 
                             audio_url = results["url"]
@@ -441,16 +449,16 @@ def run_bot():
                             if results == None:
                                 continue
                             if results == 'region_locked':
-                                await msg.reply("Hejtuju Srbiju pa nmz se pusti", mention_author=False)
+                                await msg.reply(f"Hejtuju Srbiju pa <{query}> nmz se pusti", mention_author=False)
                                 continue
                             if results == 'copyright':
-                                await msg.reply("Hejtuju Srbiju pa nmz se pusti", mention_author=False)
+                                await msg.reply(f"Kopirajtovali <{query}> lmao", mention_author=False)
                                 continue
                             if results == 'age_restricted':
-                                await msg.reply("Sussy/NSFW video, age restricted", mention_author=False)
+                                await msg.reply(f"Pa <{query}> je sussy, age restricted video baka", mention_author=False)
                                 continue
                             if results == 'video_unavailable':
-                                await msg.reply("Video nedostupan brt", mention_author=False)
+                                await msg.reply(f"Video <{query}> je nedostupan brt", mention_author=False)
                                 continue
 
                             tracks = results.get("entries", [])
@@ -478,9 +486,8 @@ def run_bot():
                         else:
                             await play_next_song(voice_client, guild_id, msg.channel)
                 except Exception as e:
-                    print("exception trigerovan: " + str(e))
                     if not (str(e) == "Not connected to voice."):
-                        print(str(e))
+                        print("exception trigerovan: " + str(e))
                         await msg.reply("Nesto oslo u kurac, vrv veljko kriv.", mention_author=False)
                     return
 
@@ -577,7 +584,6 @@ def run_bot():
                 SONG_QUEUES[guild_id] = deque()    
 
         bot.run(TOKEN)
-    # print("umrtvljen thread")
 
 def stop_bot():
     global shutdown
