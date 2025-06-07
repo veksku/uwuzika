@@ -136,17 +136,26 @@ def _extract(query, ydl_opts):
             # with StdoutYoutubeDL(ydl_opts) as ydl:
                 return ydl.extract_info(query, download=False)
         except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError, ValueError) as e:
-            print(f"greska {e}")
+            # print(f"greska {e}")
             if "The uploader has not made this video available in your country" in str(e):
                 print(f"Video {query} is not available in your country.")
-                return None
+                return 'region_locked'
+            if "copyright claim" in str(e):
+                print(f"Video {query} got yoinked.")
+                return 'copyright'
+            if "This video may be inappropriate for some users." in str(e):
+                print(f"Video {query} got yoinked.")
+                return 'age_restricted'
+            if "Video unavailable. This video is not available" in str(e):
+                print(f"Video {query} is not available.")
+                return 'video_unavailable'
             if 'Requested format is not available.' in str(e):
                 print(f"Format extraction failed, attempt {attempt+1}, trying again...")
                 time.sleep(3)
             else:
                 raise
     print(f"Failed to process {query} after {attempts} attempts, either update yt-dlp or cry")
-    return None
+    return
 
 
 
@@ -400,10 +409,25 @@ def run_bot():
                                 query = query[:i]
                             search_term = query
                             results = await search_ytdlp_async(search_term, ydl_options_link)
+
                             if results == None:
-                                pass
+                                continue
+                            if results == 'region_locked':
+                                await msg.reply("Hejtuju Srbiju pa nmz se pusti", mention_author=False)
+                                continue
+                            if results == 'copyright':
+                                await msg.reply("Kopirajtovali ga lmao", mention_author=False)
+                                continue
+                            if results == 'age_restricted':
+                                await msg.reply("Sussy/NSFW video, age restricted", mention_author=False)
+                                continue
+                            if results == 'video_unavailable':
+                                await msg.reply("Video nedostupan brt", mention_author=False)
+                                continue
+
                             audio_url = results["url"]
                             title = results.get("title", "Bezimena")
+
                             if has_imagine_dragons(title):
                                 if random.uniform(0, 1) > 0.1:
                                     await msg.reply("BLASPHEMY", mention_author=True)
@@ -413,10 +437,24 @@ def run_bot():
                         else:
                             search_term = ytsearch1 + query
                             results = await search_ytdlp_async(search_term, ydl_options)
+
                             if results == None:
-                                pass
+                                continue
+                            if results == 'region_locked':
+                                await msg.reply("Hejtuju Srbiju pa nmz se pusti", mention_author=False)
+                                continue
+                            if results == 'copyright':
+                                await msg.reply("Hejtuju Srbiju pa nmz se pusti", mention_author=False)
+                                continue
+                            if results == 'age_restricted':
+                                await msg.reply("Sussy/NSFW video, age restricted", mention_author=False)
+                                continue
+                            if results == 'video_unavailable':
+                                await msg.reply("Video nedostupan brt", mention_author=False)
+                                continue
+
                             tracks = results.get("entries", [])
-                            
+                                            
                             # this check is prob not needed anymore
                             if len(tracks) == 0:
                                 await msg.reply("Search prazan nzm.", mention_author=False)
@@ -425,7 +463,7 @@ def run_bot():
                             first_track = tracks[0]
                             audio_url = first_track["url"]
                             title = first_track.get("title", "Bezimena")
-
+                        
                         if SONG_QUEUES.get(guild_id) is None:
                             SONG_QUEUES[guild_id] = deque()
 
