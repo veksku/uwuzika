@@ -206,7 +206,6 @@ def fix_playlist_url(url):
 
     return retval
 
-##################
 current_song = {}
 queries = {}
 voice_channel = {}
@@ -425,10 +424,25 @@ def create_bot():
                 return await msg.reply("Pa nisam u voicu keso.", mention_author=False)
 
             if not voice_client[guild_id].is_paused():
+                if current_song[guild_id] is None:
+                    return await msg.reply("Ne ide pesma brt.", mention_author=False)
                 return await msg.reply("Pa nisam pauziran brt.", mention_author=False)
             
             voice_client[guild_id].resume()
             await msg.reply("IDE GAS!", mention_author=False)
+
+        if msg.content.split()[0].lower() == prefix + "clear":
+            if not voice_client[guild_id] or not voice_client[guild_id].is_connected():
+                return await msg.reply("Pa nisam u voicu keso.", mention_author=False)
+            
+            # Clear the guild's queue
+            if guild_id in queries:
+                queries[guild_id].clear()
+
+            # If something is playing or paused, stop it
+            if voice_client[guild_id].is_playing() or voice_client[guild_id].is_paused():
+                await msg.reply("Ociscen ceo kueue.", mention_author=False)
+                voice_client[guild_id].stop()
 
         if msg.content.split()[0].lower() == prefix + "leave":
             if not voice_client[guild_id] or not voice_client[guild_id].is_connected():
@@ -507,7 +521,6 @@ def create_bot():
             # await voice_client.disconnect()
             current_song[guild_id] = None
             queries[guild_id] = []
-##################
 
 def run_bot():
     print("Inicijalizujem bota..")
