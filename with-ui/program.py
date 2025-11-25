@@ -206,7 +206,6 @@ def fix_playlist_url(url):
 
     return retval
 
-##################
 current_song = {}
 queries = {}
 voice_channel = {}
@@ -307,91 +306,97 @@ def create_bot():
             # elif voice_channel != voice_client.channel:
             #     await msg.reply("Kidnapovali me na drugom voice kanalu! :(", mention_author=False)
 
-            try:
-                text = msg.content.split()[1]
+            # try:
+            text = msg.content.split()[1]
 
-                if queries.get(guild_id) is None:
-                    queries[guild_id] = []
-                if current_song.get(guild_id) is None:
-                    current_song[guild_id] = None
+            if queries.get(guild_id) is None:
+                queries[guild_id] = []
+            if current_song.get(guild_id) is None:
+                current_song[guild_id] = None
 
-                #if its url
-                if validators.url(text) == True:
-                    if "list=" in text:
-                        info = None
-                        to_edit = None
-                        if "&list=RD" in text:
-                            to_edit = await msg.channel.send("Miksovi su spori i nepouzdani - vrv nece bit iste pesme", mention_author=False)
-                            info = _extract(text, ydl_options_get_data)
-                        elif "&list=" in text:
-                            fixed_url = fix_playlist_url(text)
-                            info = _extract(fixed_url, ydl_options_get_data)
-                        elif "playlist?list=" in text:
-                            info = _extract(text, ydl_options_get_data)
-                        else:
-                            await msg.reply("New playlist link?", mention_author=False)
-                            return
-                        videos = info.get('entries', [])
-                        for video in videos:
-                            url, name = (video.get('url'), video.get('title', 'Bezimena'))
-                            queries[guild_id].append((url, name, 1))
-                        if to_edit is None:
-                            await msg.reply(f"Dodata plejlista **{info.get('title')}**", mention_author=False)
-                        else:
-                            await to_edit.edit(content=f"Dodao **{info.get('title')}**")
+            #if its url
+            if validators.url(text) == True:
+                if "list=" in text:
+                    info = None
+                    to_edit = None
+                    if "&list=RD" in text:
+                        to_edit = await msg.channel.send("Miksovi su spori i nepouzdani - vrv nece bit iste pesme", mention_author=False)
+                        info = _extract(text, ydl_options_get_data)
+                    elif "&list=" in text:
+                        fixed_url = fix_playlist_url(text)
+                        info = _extract(fixed_url, ydl_options_get_data)
+                    elif "playlist?list=" in text:
+                        info = _extract(text, ydl_options_get_data)
                     else:
-                        video = await search_ytdlp_async(text, ydl_options)
-                        check = await is_retval_fine(video, msg.channel, text)
-                        if not check:
-                            return
+                        await msg.reply("New playlist link?", mention_author=False)
+                        return
+                    videos = info.get('entries', [])
+                    for video in videos:
                         url, name = (video.get('url'), video.get('title', 'Bezimena'))
-                        
-                        if has_imagine_dragons(name):
-                            await msg.reply("BLASPHEMY", mention_author=True)
-                            return
-
-                        queries[guild_id].append((url, name, 0))
-                        await msg.reply(f"Dodat video **{video.get('title')}**", mention_author=False)
-                #if its words
+                        queries[guild_id].append((url, name, 1))
+                    if to_edit is None:
+                        await msg.reply(f"Dodata plejlista **{info.get('title')}**", mention_author=False)
+                    else:
+                        await to_edit.edit(content=f"Dodao **{info.get('title')}**")
                 else:
-                    song_query = ''
-                    i = 0
-                    for words in msg.content.split():
-                        if i == 0:
-                            pass
-                        else:
-                            song_query += words
-                            song_query += ' '
-                        i += 1
-
-                    if has_imagine_dragons(song_query):
+                    video = await search_ytdlp_async(text, ydl_options)
+                    check = await is_retval_fine(video, msg.channel, video.get('url'))
+                    url, name = (video.get('url'), video.get('title', 'Bezimena'))
+                    
+                    if not check:
+                        return
+                    
+                    if has_imagine_dragons(name):
                         await msg.reply("BLASPHEMY", mention_author=True)
                         return
 
-                    data = await search_ytdlp_async("ytsearch1: " + song_query, ydl_options)
-
-                    if len(data) == 0:
-                        await msg.reply("Search prazan nzm.", mention_author=False)
-                        return
-                    
-                    tracks = data.get("entries", [])
-                    video = tracks[0]
-                    url, name = (video.get('url'), video.get('title', 'Bezimena'))
-                    # check = await is_retval_fine(video, msg.channel, url)
-
-                    # if not check:
-                    #     return
-                    
                     queries[guild_id].append((url, name, 0))
                     await msg.reply(f"Dodat video **{video.get('title')}**", mention_author=False)
+            #if its words
+            else:
+                song_query = ''
+                i = 0
+                for words in msg.content.split():
+                    if i == 0:
+                        pass
+                    else:
+                        song_query += words
+                        song_query += ' '
+                    i += 1
 
-                if not (voice_client[guild_id].is_playing() or voice_client[guild_id].is_paused()):
-                    await play_next_song(voice_client[guild_id], guild_id, msg.channel)
-            except Exception as e:
-                if not (str(e) == "Not connected to voice."):
-                    print("exception trigerovan: " + str(e))
-                    await msg.reply("Nesto oslo u kurac, vrv veljko kriv.", mention_author=False)
-                return
+                if has_imagine_dragons(song_query):
+                    await msg.reply("BLASPHEMY", mention_author=True)
+                    return
+
+                data = await search_ytdlp_async("ytsearch1: " + song_query, ydl_options)
+
+                if len(data) == 0:
+                    await msg.reply("Search prazan nzm.", mention_author=False)
+                    return
+                
+                tracks = data.get("entries", [])
+                
+                if len(tracks) == 0:
+                    await msg.reply("Nemre nadjem nista, napisi malo drukcije.", mention_author=False)
+                    return
+                
+                video = tracks[0]
+                url, name = (video.get('url'), video.get('title', 'Bezimena'))
+                check = await is_retval_fine(video, msg.channel, url)
+
+                if not check:
+                    return
+                
+                queries[guild_id].append((url, name, 0))
+                await msg.reply(f"Dodat video **{video.get('title')}**", mention_author=False)
+
+            if not (voice_client[guild_id].is_playing() or voice_client[guild_id].is_paused()):
+                await play_next_song(voice_client[guild_id], guild_id, msg.channel)
+            # except Exception as e:
+            #     if not (str(e) == "Not connected to voice."):
+            #         print("exception trigerovan: " + str(e))
+            #         await msg.reply("Nesto oslo u kurac, vrv veljko kriv.", mention_author=False)
+            #     return
                 
         if (msg.content.split()[0].lower() == prefix + "np" or
             msg.content.split()[0].lower() == prefix + "nowplaying"):
@@ -424,10 +429,25 @@ def create_bot():
                 return await msg.reply("Pa nisam u voicu keso.", mention_author=False)
 
             if not voice_client[guild_id].is_paused():
+                if current_song[guild_id] is None:
+                    return await msg.reply("Ne ide pesma brt.", mention_author=False)
                 return await msg.reply("Pa nisam pauziran brt.", mention_author=False)
             
             voice_client[guild_id].resume()
             await msg.reply("IDE GAS!", mention_author=False)
+
+        if msg.content.split()[0].lower() == prefix + "clear":
+            if not voice_client[guild_id] or not voice_client[guild_id].is_connected():
+                return await msg.reply("Pa nisam u voicu keso.", mention_author=False)
+            
+            # Clear the guild's queue
+            if guild_id in queries:
+                queries[guild_id].clear()
+
+            # If something is playing or paused, stop it
+            if voice_client[guild_id].is_playing() or voice_client[guild_id].is_paused():
+                await msg.reply("Ociscen ceo kueue.", mention_author=False)
+                voice_client[guild_id].stop()
 
         if msg.content.split()[0].lower() == prefix + "leave":
             if not voice_client[guild_id] or not voice_client[guild_id].is_connected():
@@ -506,7 +526,6 @@ def create_bot():
             # await voice_client.disconnect()
             current_song[guild_id] = None
             queries[guild_id] = []
-##################
 
 def run_bot():
     print("Inicijalizujem bota..")
